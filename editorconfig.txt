@@ -1,0 +1,25 @@
+# EditorConfig is awesome: http://EditorConfig.org
+
+# Top-most EditorConfig file
+root = true
+
+# Matches all files except those in the _site and node_modules folders
+[{/source/*}]
+
+# Newline ending every file
+insert_final_newline = true
+
+# Set default charset
+charset = utf-8
+
+# Set 4 space indentation
+indent_style = space
+indent_size = 4
+
+# Remove any whitespace characters preceding newline characters
+trim_trailing_whitespace = true
+
+# Would prefer indent_size = 0 for HTML but some editors do not support that
+[*.html]
+indent_style = space
+indent_size = 1

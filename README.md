@@ -1,3 +1,3 @@
 # webvi-web-bluetooth
 
-WIP DO NOT USE
+Work in progress. DO NOT USE.

@@ -1,0 +1,5 @@
+# Ignore all files in all subdirectories
+**/*
+
+# Only visit the following subdirectories and extract specific files
+!/source/*.js

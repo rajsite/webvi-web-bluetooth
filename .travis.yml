@@ -1,0 +1,10 @@
+language: node_js
+dist: trusty
+sudo: false
+node_js:
+- 'lts/*'
+cache:
+  directories:
+    - "node_modules"
+before_script:
+  - tar -tf $(npm pack)
