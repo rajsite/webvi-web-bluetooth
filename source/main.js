@@ -1,30 +1,30 @@
 (function () {
     'use strict';
 
-    // zero is an invalid instanceId
-    var nextInstanceId = 1;
-    class InstanceManager {
+    // zero is an invalid refnum
+    var nextRefnum = 1;
+    class RefnumManager {
         constructor () {
-            this.instances = new Map();
+            this.refnums = new Map();
         }
 
-        createInstance (obj) {
-            var instanceId = nextInstanceId;
-            nextInstanceId += 1;
-            this.instances.set(instanceId, obj);
-            return instanceId;
+        createRefnum (obj) {
+            var refnum = nextRefnum;
+            nextRefnum += 1;
+            this.refnums.set(refnum, obj);
+            return refnum;
         }
 
-        getInstance (instanceId) {
-            return this.instances.get(instanceId);
+        getObject (refnum) {
+            return this.refnums.get(refnum);
         }
 
-        clearInstance (instanceId) {
-            this.instances.delete(instanceId);
+        closeRefnum (refnum) {
+            this.refnums.delete(refnum);
         }
     }
 
-    var instanceManager = new InstanceManager();
+    var refnumManager = new RefnumManager();
 
     /**
      * Starting point for making a Web Bluetooth connection.
@@ -80,8 +80,9 @@
             // Ask user for the bluetooth device
             window.navigator.bluetooth.requestDevice(requestDeviceOptions)
                 .then(device => {
-                    var instanceId = instanceManager.createInstance(device);
-                    completionCallback(instanceId);
+                    var refnum = refnumManager.createRefnum(device);
+                    // TODO instead return JSON with
+                    completionCallback(refnum);
                 })
                 .catch(ex => completionCallback(ex));
         };
