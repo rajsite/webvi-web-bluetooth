@@ -37,10 +37,11 @@
      *
      * @param selector
      *  The selector for the element in the page will be used for starting the user interaction.
+     *  The selector string for an element can be found in the right-rail of LabVIEW NXG when a control is selected.
      *
      * @param eventName
      *  Only events "triggered by user activation" can be used: https://html.spec.whatwg.org/multipage/interaction.html#activation.
-     *  By default the click event will be used if an empty eventName is provided.
+     *  By default the "click" event will be used if an empty eventName is provided.
      *  The event will only fire once per call to setupSingleTriggerElement.
      *
      * @returns
