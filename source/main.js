@@ -100,6 +100,7 @@
         element.addEventListener(validEventName, handler);
     };
 
+    // TODO maybe should have gattServer and gattServerConnect / gattServerDisconnect? Seems strange to ask device to disconnect gatt server instead of server itself
     var gattServerConnect = function (deviceRefnum, jsapi) {
         var device = refnumManager.getObject(deviceRefnum);
         if (device instanceof window.BluetoothDevice === false) {
@@ -113,6 +114,17 @@
                 completionCallback(gattServerRefnum);
             })
             .catch(ex => completionCallback(ex));
+    };
+
+    var gattServerDisconnect = function (deviceRefnum) {
+        var device = refnumManager.getObject(deviceRefnum);
+        if (device instanceof window.BluetoothDevice === false) {
+            throw new Error(`Expected gattServerDisconnect to be invoked with a deviceRefnum, instead got: ${device}`);
+        }
+
+        // TODO services, characteristics, and descriptors become invalid on disconnect: https://webbluetoothcg.github.io/web-bluetooth/#persistence
+        // Maybe we should track and auto clean-up those references?
+        device.gatt.disconnect();
     };
 
     // For information about primary vs included services: https://webbluetoothcg.github.io/web-bluetooth/#information-model
@@ -161,12 +173,26 @@
             .catch(ex => completionCallback(ex));
     };
 
+    var writeValue = function (characteristicRefnum, value, jsapi) {
+        var characteristic = refnumManager.getObject(characteristicRefnum);
+        if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
+            throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
+        }
+
+        var completionCallback = jsapi.getCompletionCallback();
+        characteristic.writeValue(value)
+            .then(() => completionCallback())
+            .error((ex) => completionCallback(ex));
+    };
+
     window.webvi_web_bluetooth = {
         canonicalUUID,
         requestDevice,
         gattServerConnect,
+        gattServerDisconnect,
         getPrimaryService,
         getCharacteristic,
-        readValue
+        readValue,
+        writeValue
     };
 }());

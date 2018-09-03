@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    var validPrimitives = ['boolean', 'string', 'number'];
+    var validPrimitives = ['boolean', 'string', 'number', 'undefined'];
     var validInstances = [Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array];
     var validateReturnType = function (val) {
         var isValid = validPrimitives.find(name => typeof val === name) !== undefined || validInstances.find(klass => val instanceof klass) !== undefined;

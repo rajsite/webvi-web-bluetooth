@@ -5,10 +5,21 @@
   <script src="test.js"></script>
  </head>
  <body>
-  <h1>Battery Read Test</h1>
-  <button id="battery_read_start">Battery Read Start</button>
-  <button id="battery_read">Battery Read</button>
-  <p>Result: <span id="battery_read_result">None</span></p>
-  <p>Errors: <span id="battery_read_error">None</span></p>
+  <section>
+    <h1>Battery Read Test</h1>
+    <button id="battery_enable">Enable Battery Read Connect</button>
+    <button id="battery_connect">Battery Read Connect</button>
+    <p><label for="battery_result">Result: </label><output id="battery_result">None</output></p>
+    <p><label for="battery_error">Error: </label><output id="battery_error">None</output></p>
+  </section>
+
+  <section>
+    <h1>Playbulb Candle Test</h1>
+    <button id="playbulb_enable">Enable Playbulb Connect</button>
+    <button id="playbulb_connect">Playbulb Connect</button>
+    <p><label for="playbulb_result">Result</label><output id="playbulb_result">None</output></p>
+    <p><label for="playbulb_error">Error</label><output id="playbulb_error">None</output></p>
+  </section>
+
  </body>
 </html>

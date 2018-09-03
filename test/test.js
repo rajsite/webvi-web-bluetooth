@@ -16,7 +16,7 @@
     var invokeAsWebVI = window.webvisimulator.invokeAsWebVI;
 
     // Test code
-    var batteryRead = async function () {
+    var batteryEnable = async function () {
         // Based on https://googlechrome.github.io/samples/web-bluetooth/notifications.html?service=battery_service&characteristic=battery_level
         try {
             var requestDataOptionsJSON = JSON.stringify({
@@ -27,7 +27,7 @@
 
             var deviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.requestDevice', [
                 requestDataOptionsJSON,
-                '#battery_read',
+                '#battery_connect',
                 'click'
             ]);
 
@@ -49,15 +49,19 @@
                 characteristicRefnum
             ]);
 
-            window.battery_read_result.textContent = value;
+            window.battery_result.value = value;
+
+            invokeAsWebVI('webvi_web_bluetooth.gattServerDisconnect', [
+                deviceRefnum
+            ]);
         } catch (ex) {
-            window.battery_read_error.textContent = ex.message;
+            window.battery_error.value = ex.message;
             console.error(ex);
         }
     };
 
     // Run test
     domContentLoaded().then(() => {
-        window.battery_read_start.onclick = batteryRead;
+        window.battery_enable.onclick = batteryEnable;
     });
 }());
