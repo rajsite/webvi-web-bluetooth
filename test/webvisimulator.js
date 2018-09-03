@@ -69,6 +69,39 @@
         return validateReturnType(result);
     };
 
+    // Wrapper to expose called function name and parameters in call stack
+    var maxArgLength = 100;
+    var createNewName = function (functionName, args) {
+        var parametersMerged = args
+            .map(arg => String(arg))
+            .map(arg => {
+                if (arg.length > maxArgLength) {
+                    return arg.substring(0, maxArgLength) + '...';
+                }
+                return arg;
+            })
+            .join(' 💌 ');
+
+        var parametersFormatted = '';
+        if (args.length > 0) {
+            parametersFormatted = ` 📌 ${parametersMerged} 📌 `;
+        }
+        return `invokeAsWebVI 🚀 ${functionName}${parametersFormatted}- ⏰ ${performance.now()} ms`;
+    };
+
+    var invokeAsWebVIWrapper = function (functionName, args) {
+        var invokeAsWebVIWrapped = function () {
+            return invokeAsWebVI(functionName, args);
+        };
+
+        var newName = createNewName(functionName, args);
+        Object.defineProperty(invokeAsWebVIWrapped, 'name', {
+            value: newName
+        });
+        console.debug(newName);
+        return invokeAsWebVIWrapped();
+    };
+
     window.webvisimulator = {};
-    window.webvisimulator.invokeAsWebVI = invokeAsWebVI;
+    window.webvisimulator.invokeAsWebVI = invokeAsWebVIWrapper;
 }());

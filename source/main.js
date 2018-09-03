@@ -80,9 +80,9 @@
             // Ask user for the bluetooth device
             window.navigator.bluetooth.requestDevice(requestDeviceOptions)
                 .then(device => {
-                    var refnum = refnumManager.createRefnum(device);
-                    // TODO instead return JSON with
-                    completionCallback(refnum);
+                    var deviceRefnum = refnumManager.createRefnum(device);
+                    // TODO instead return JSON with device refnum, device name, and device id: https://webbluetoothcg.github.io/web-bluetooth/#bluetoothdevice
+                    completionCallback(deviceRefnum);
                 })
                 .catch(ex => completionCallback(ex));
         };
@@ -90,6 +90,72 @@
         element.addEventListener(validEventName, handler);
     };
 
-    window.webvi_web_bluetooth = {};
-    window.webvi_web_bluetooth.requestDevice = requestDevice;
+    var gattServerConnect = function (deviceRefnum, jsapi) {
+        var device = refnumManager.getObject(deviceRefnum);
+        if (device instanceof window.BluetoothDevice === false) {
+            throw new Error(`Expected gattServerConnect to be invoked with a deviceRefnum, instead got: ${device}`);
+        }
+
+        var completionCallback = jsapi.getCompletionCallback();
+        device.gatt.connect()
+            .then(function (gattServer) {
+                var gattServerRefnum = refnumManager.createRefnum(gattServer);
+                completionCallback(gattServerRefnum);
+            })
+            .catch(ex => completionCallback(ex));
+    };
+
+    // For information about primary vs included services: https://webbluetoothcg.github.io/web-bluetooth/#information-model
+    var getPrimaryService = function (gattServerRefnum, serviceName, jsapi) {
+        var gattServer = refnumManager.getObject(gattServerRefnum);
+        if (gattServer instanceof window.BluetoothRemoteGATTServer === false) {
+            throw new Error(`Expected getPrimaryService to be invoked with a gattServerRefnum, instead got: ${gattServer}`);
+        }
+
+        var completionCallback = jsapi.getCompletionCallback();
+        gattServer.getPrimaryService(serviceName)
+            .then(function (service) {
+                var serviceRefnum = refnumManager.createRefnum(service);
+                completionCallback(serviceRefnum);
+            })
+            .catch(ex => completionCallback(ex));
+    };
+
+    var getCharacteristic = function (serviceRefnum, characteristicName, jsapi) {
+        var service = refnumManager.getObject(serviceRefnum);
+        if (service instanceof window.BluetoothRemoteGATTService === false) {
+            throw new Error(`Expected getCharacteristic to be invoked with a serviceRefnum, instead got: ${service}`);
+        }
+
+        var completionCallback = jsapi.getCompletionCallback();
+        service.getCharacteristic(characteristicName)
+            .then(function (characteristic) {
+                var characteristicRefnum = refnumManager.createRefnum(characteristic);
+                completionCallback(characteristicRefnum);
+            })
+            .catch(ex => completionCallback(ex));
+    };
+
+    var readValue = function (characteristicRefnum, jsapi) {
+        var characteristic = refnumManager.getObject(characteristicRefnum);
+        if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
+            throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
+        }
+
+        var completionCallback = jsapi.getCompletionCallback();
+        characteristic.readValue()
+            .then(function (valueDataView) {
+                // DataView documentation https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
+                completionCallback(new Uint8Array(valueDataView.buffer));
+            })
+            .catch(ex => completionCallback(ex));
+    };
+
+    window.webvi_web_bluetooth = {
+        requestDevice,
+        gattServerConnect,
+        getPrimaryService,
+        getCharacteristic,
+        readValue
+    };
 }());

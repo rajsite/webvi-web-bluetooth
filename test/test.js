@@ -2,12 +2,14 @@
     'use strict';
 
     // General helper functions
-    var domReady = function (readyCallback) {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', readyCallback);
-        } else {
-            readyCallback();
-        }
+    var domContentLoaded = function () {
+        return new Promise(function (resolve) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => resolve());
+            } else {
+                resolve();
+            }
+        });
     };
 
     // Aliases
@@ -22,15 +24,36 @@
             }]
         });
 
-        var device = await invokeAsWebVI('webvi_web_bluetooth.requestDevice', [
+        var deviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.requestDevice', [
             requestDataOptionsJSON,
             '#start_button',
             'click'
         ]);
 
-        console.log(device);
+        var gattServerRefnum = await invokeAsWebVI('webvi_web_bluetooth.gattServerConnect', [
+            deviceRefnum
+        ]);
+
+        var serviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.getPrimaryService', [
+            gattServerRefnum,
+            'battery_service'
+        ]);
+
+        var characteristicRefnum = await invokeAsWebVI('webvi_web_bluetooth.getCharacteristic', [
+            serviceRefnum,
+            'battery_level'
+        ]);
+
+        var value = await invokeAsWebVI('webvi_web_bluetooth.readValue', [
+            characteristicRefnum
+        ]);
+
+        console.log(value[0]);
     };
 
     // Run test
-    domReady(main);
+    domContentLoaded().then(() => main()).catch((ex) => {
+        document.getElementById('error_box').textContent = ex.message;
+        console.error(ex);
+    });
 }());
