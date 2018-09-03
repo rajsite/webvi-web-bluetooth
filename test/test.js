@@ -64,6 +64,11 @@
         return window.playbulb_color.value.match(/#([0-9a-f][0-9a-f])([0-9a-f][0-9a-f])([0-9a-f][0-9a-f])/).slice(1).map(hex => parseInt(hex, 16));
     };
 
+    var playbulbError = function (ex) {
+        window.playbulb_error.value = ex.message;
+        console.error(ex);
+    };
+
     var playbulbEnable = async function () {
         /* eslint-disable no-magic-numbers */
         // Based on https://googlecodelabs.github.io/candle-bluetooth/playbulbCandle.js
@@ -113,17 +118,24 @@
 
             // window.battery_result.value = value;
 
-            await invokeAsWebVI('webvi_web_bluetooth.writeValue', [
-                characteristicRefnum,
-                new Uint8Array([0x00, ...getPlaybulbRGBColorArray()])
-            ]);
+            window.playbulb_send.onclick = async function () {
+                await invokeAsWebVI('webvi_web_bluetooth.writeValue', [
+                    characteristicRefnum,
+                    new Uint8Array([0x00, ...getPlaybulbRGBColorArray()])
+                ]).catch(playbulbError);
+            };
 
-            invokeAsWebVI('webvi_web_bluetooth.gattServerDisconnect', [
-                deviceRefnum
-            ]);
+            window.playbulb_disconnect.onclick = async function () {
+                try {
+                    invokeAsWebVI('webvi_web_bluetooth.gattServerDisconnect', [
+                        deviceRefnum
+                    ]);
+                } catch (ex) {
+                    playbulbError(ex);
+                }
+            };
         } catch (ex) {
-            window.playbulb_error.value = ex.message;
-            console.error(ex);
+            playbulbError(ex);
         }
     };
 
