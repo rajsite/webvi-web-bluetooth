@@ -1,7 +1,11 @@
 module.exports = {
     'extends': 'eslint:recommended',
     'env': {
-        'browser': true
+        'browser': true,
+        'es6': true
+    },
+    'parserOptions': {
+        'ecmaVersion': 2017
     },
     'rules': {
         'no-console': 'off',
@@ -43,7 +47,7 @@ module.exports = {
         'no-labels': 'error',
         'no-lone-blocks': 'error',
         'no-loop-func': 'error',
-        'no-magic-numbers': ['error', { 'ignore': [0, 1], 'ignoreArrayIndexes': true}],
+        'no-magic-numbers': ['error', { 'ignore': [-1, 0, 1], 'ignoreArrayIndexes': true}],
         'no-multi-spaces': 'error',
         'no-multi-str': 'error',
         'no-new-func': 'error',
