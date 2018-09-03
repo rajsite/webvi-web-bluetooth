@@ -1,9 +1,9 @@
 (function () {
     'use strict';
 
+    var validPrimitives = ['boolean', 'string', 'number'];
+    var validInstances = [Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array];
     var validateReturnType = function (val) {
-        var validPrimitives = ['boolean', 'string', 'number'];
-        var validInstances = [Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array];
         var isValid = validPrimitives.find(name => typeof val === name) !== undefined || validInstances.find(klass => val instanceof klass) !== undefined;
         if (isValid === false) {
             throw new Error(`Return value is not a type supported by the JSLI. Returned value: ${val}`);
@@ -35,6 +35,7 @@
                 callback = function (result) {
                     if (result instanceof Error) {
                         reject(result);
+                        return;
                     }
 
                     resolve(validateReturnType(result));
@@ -86,20 +87,19 @@
         if (args.length > 0) {
             parametersFormatted = ` 📌 ${parametersMerged} 📌 `;
         }
-        return `invokeAsWebVI 🚀 ${functionName}${parametersFormatted}- ⏰ ${performance.now()} ms`;
+        return `invokeAsWebVILogger 🚀 ${functionName}${parametersFormatted}- ⏰ ${performance.now()} ms`;
     };
 
     var invokeAsWebVIWrapper = function (functionName, args) {
-        var invokeAsWebVIWrapped = function () {
+        var newName = createNewName(functionName, args);
+        var invokeAsWebVILogger = function () {
+            console.debug(newName);
             return invokeAsWebVI(functionName, args);
         };
-
-        var newName = createNewName(functionName, args);
-        Object.defineProperty(invokeAsWebVIWrapped, 'name', {
+        Object.defineProperty(invokeAsWebVILogger, 'name', {
             value: newName
         });
-        console.debug(newName);
-        return invokeAsWebVIWrapped();
+        return invokeAsWebVILogger();
     };
 
     window.webvisimulator = {};
