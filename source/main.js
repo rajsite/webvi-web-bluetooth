@@ -26,6 +26,15 @@
 
     var refnumManager = new RefnumManager();
 
+    // Used to convert from 16-bit or 32-bit UUID numbers to 128-bit UUID strings
+    var canonicalUUID = function (alias) {
+        if (window.navigator.bluetooth === undefined) {
+            throw new Error('Web Bluetooth is not supported by this browser');
+        }
+
+        return window.BluetoothUUID.canonicalUUID(alias);
+    };
+
     /**
      * Starting point for making a Web Bluetooth connection.
      * Web Bluetooth requires an interaction from a user
@@ -153,6 +162,7 @@
     };
 
     window.webvi_web_bluetooth = {
+        canonicalUUID,
         requestDevice,
         gattServerConnect,
         getPrimaryService,
