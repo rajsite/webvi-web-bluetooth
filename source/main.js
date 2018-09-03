@@ -182,7 +182,7 @@
         var completionCallback = jsapi.getCompletionCallback();
         characteristic.writeValue(value)
             .then(() => completionCallback())
-            .error((ex) => completionCallback(ex));
+            .catch((ex) => completionCallback(ex));
     };
 
     window.webvi_web_bluetooth = {
