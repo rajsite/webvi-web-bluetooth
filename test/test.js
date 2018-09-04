@@ -16,6 +16,11 @@
     var invokeAsWebVI = window.webvisimulator.invokeAsWebVI;
 
     // Test code
+    var batteryError = function (ex) {
+        window.battery_error.value = ex.message;
+        console.error(ex);
+    };
+
     var batteryEnable = async function () {
         // Based on https://googlechrome.github.io/samples/web-bluetooth/notifications.html?service=battery_service&characteristic=battery_level
         try {
@@ -51,12 +56,36 @@
 
             window.battery_result.value = value;
 
-            invokeAsWebVI('webvi_web_bluetooth.gattServerDisconnect', [
-                deviceRefnum
-            ]);
+            window.battery_notifications.onclick = async function () {
+                try {
+                    var notificationBufferRefnum = await invokeAsWebVI('webvi_web_bluetooth.startCharacteristicNotification', [
+                        characteristicRefnum
+                    ]);
+                    var result;
+                    var loopExp = true;
+                    while (loopExp) {
+                        result = await invokeAsWebVI('webvi_web_bluetooth.readCharacteristicNotification', [
+                            notificationBufferRefnum
+                        ]);
+                        window.battery_result.value = result + ' ' + window.battery_result.value;
+                        loopExp = true;
+                    }
+                } catch (ex) {
+                    batteryError(ex);
+                }
+            };
+
+            window.battery_disconnect.onclick = async function () {
+                try {
+                    invokeAsWebVI('webvi_web_bluetooth.gattServerDisconnect', [
+                        deviceRefnum
+                    ]);
+                } catch (ex) {
+                    batteryError(ex);
+                }
+            };
         } catch (ex) {
-            window.battery_error.value = ex.message;
-            console.error(ex);
+            batteryError(ex);
         }
     };
 
@@ -119,10 +148,14 @@
             // window.battery_result.value = value;
 
             window.playbulb_send.onclick = async function () {
-                await invokeAsWebVI('webvi_web_bluetooth.writeValue', [
-                    characteristicRefnum,
-                    new Uint8Array([0x00, ...getPlaybulbRGBColorArray()])
-                ]).catch(playbulbError);
+                try {
+                    await invokeAsWebVI('webvi_web_bluetooth.writeValue', [
+                        characteristicRefnum,
+                        new Uint8Array([0x00, ...getPlaybulbRGBColorArray()])
+                    ]);
+                } catch (ex) {
+                    playbulbError(ex);
+                }
             };
 
             window.playbulb_disconnect.onclick = async function () {

@@ -185,6 +185,95 @@
             .catch((ex) => completionCallback(ex));
     };
 
+    class NotificationBuffer {
+        constructor (characteristic) {
+            this.buffer = [];
+            this.characteristic = characteristic;
+            this.pendingReadCompletionCallback = undefined;
+
+            this.handler = (evt) => {
+                this.buffer.push(new Uint8Array(evt.target.value.buffer));
+
+                if (this.pendingReadCompletionCallback !== undefined) {
+                    this.pendingReadCompletionCallback(this.buffer.shift());
+                    this.pendingReadCompletionCallback = undefined;
+                }
+            };
+
+            this.characteristic.addEventListener('characteristicvaluechanged', this.handler);
+        }
+
+        read (completionCallback) {
+            if (this.pendingReadCompletionCallback !== undefined) {
+                completionCallback(new Error('An active characteristic notification read is already being perfomed for this characteristic.'));
+                return;
+            }
+
+            if (this.buffer.length === 0) {
+                this.pendingReadCompletionCallback = completionCallback;
+                return;
+            }
+
+            completionCallback(this.buffer.shift());
+        }
+
+        stop () {
+            this.characteristic.removeEventListener('characteristicvaluechanged', this.handler);
+            this.characteristic = undefined;
+            this.handler = undefined;
+            if (this.pendingReadCompletionCallback !== undefined) {
+                this.pendingReadCompletionCallback(new Error('Characteristic notifications stopped'));
+            }
+            this.pendingReadCompletionCallback = undefined;
+            // TODO mraj should we do anything with buffer data if there are leftovers when stopping?
+            this.buffer = undefined;
+        }
+    }
+
+    var startCharacteristicNotification = function (characteristicRefnum, jsapi) {
+        var characteristic = refnumManager.getObject(characteristicRefnum);
+        if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
+            throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
+        }
+
+        // According to spec:
+        // After notifications are enabled, the resulting value-change events won’t be delivered until after the current microtask checkpoint.
+        // This allows a developer to set up handlers in the .then handler of the result promise.
+        var completionCallback = jsapi.getCompletionCallback();
+        characteristic.startNotifications()
+            .then(() => {
+                var notificationBuffer = new NotificationBuffer(characteristic);
+                var notificationBufferRefnum = refnumManager.createRefnum(notificationBuffer);
+                completionCallback(notificationBufferRefnum);
+            })
+            .catch((ex) => completionCallback(ex));
+    };
+
+    var readCharacteristicNotification = function (notificationBufferRefnum, jsapi) {
+        var notificationBuffer = refnumManager.getObject(notificationBufferRefnum);
+        if (notificationBuffer instanceof NotificationBuffer === false) {
+            throw new Error(`Expected readCharacteristicNotification to be invoked with a notificationBufferRefnum, instead got: ${notificationBuffer}`);
+        }
+
+        var completionCallback = jsapi.getCompletionCallback();
+        notificationBuffer.read(completionCallback);
+    };
+
+    var stopCharacteristicNotification = function (notificationBufferRefnum, jsapi) {
+        var notificationBuffer = refnumManager.getObject(notificationBufferRefnum);
+        if (notificationBuffer instanceof NotificationBuffer === false) {
+            throw new Error(`Expected readCharacteristicNotification to be invoked with a notificationBufferRefnum, instead got: ${notificationBuffer}`);
+        }
+
+        var completionCallback = jsapi.getCompletionCallback();
+        notificationBuffer.characteristic.stopNotifications()
+            .then(() => completionCallback())
+            .catch((ex) => completionCallback(ex))
+            .finally(() => {
+                notificationBuffer.stop();
+            });
+    };
+
     window.webvi_web_bluetooth = {
         canonicalUUID,
         requestDevice,
@@ -193,6 +282,9 @@
         getPrimaryService,
         getCharacteristic,
         readValue,
-        writeValue
+        writeValue,
+        startCharacteristicNotification,
+        readCharacteristicNotification,
+        stopCharacteristicNotification
     };
 }());
