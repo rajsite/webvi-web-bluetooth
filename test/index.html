@@ -4,6 +4,12 @@
   <script src="webvisimulator.js"></script>
   <script src="test.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    #puckjs_result {
+      white-space: pre;
+      font-family: Lucida Console, Courier, monospace;
+    }
+  </style>
  </head>
  <body>
   <section>
@@ -27,5 +33,16 @@
     <p><label for="playbulb_error">Error: </label><output id="playbulb_error">None</output></p>
   </section>
 
+  <section>
+    <h1>PuckJS TX / RX Test</h1>
+    <button id="puckjs_enable">Enable PuckJS Connect</button>
+    <button id="puckjs_connect">PuckJS Connect</button>
+    <button id="puckjs_notifications">PuckJS Start Notifications</button>
+    <input id="puckjs_command" type="text">
+    <button id="puckjs_send">PuckJS Send Command</button>
+    <button id="puckjs_disconnect">PuckJS Disconnect</button>
+    <p><label for="puckjs_result">Result: </label><output id="puckjs_result">None</output></p>
+    <p><label for="puckjs_error">Error: </label><output id="puckjs_error">None</output></p>
+  </section>
  </body>
 </html>

@@ -172,8 +172,99 @@
         }
     };
 
+    let puckjsError = function (ex) {
+        window.puckjs_error.value = ex.message;
+        console.error(ex);
+    };
+
+    let puckjsEnable = async function () {
+        // Based on http://www.espruino.com/About+Bluetooth+LE#the-puck-s-services
+        try {
+            const NORDIC_UART_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+            // Can only transmit up to 20 bytes at a time
+            const NORDIC_TX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+            const NORDIC_RX_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+            let requestDataOptionsJSON = JSON.stringify({
+                filters: [{
+                    services: [NORDIC_UART_UUID]
+                }]
+            });
+
+            let deviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.requestDevice', [
+                requestDataOptionsJSON,
+                '#puckjs_connect',
+                'click'
+            ]);
+
+            let gattServerRefnum = await invokeAsWebVI('webvi_web_bluetooth.gattServerConnect', [
+                deviceRefnum
+            ]);
+
+            let serviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.getPrimaryService', [
+                gattServerRefnum,
+                NORDIC_UART_UUID
+            ]);
+
+            let txCharacteristicRefnum = await invokeAsWebVI('webvi_web_bluetooth.getCharacteristic', [
+                serviceRefnum,
+                NORDIC_TX_UUID
+            ]);
+
+            let rxCharacteristicRefnum = await invokeAsWebVI('webvi_web_bluetooth.getCharacteristic', [
+                serviceRefnum,
+                NORDIC_RX_UUID
+            ]);
+
+            let textDecoder = new TextDecoder();
+            window.puckjs_notifications.onclick = async function () {
+                try {
+                    let notificationBufferRefnum = await invokeAsWebVI('webvi_web_bluetooth.startCharacteristicNotification', [
+                        rxCharacteristicRefnum
+                    ]);
+                    let loopExp = true;
+                    while (loopExp) {
+                        let resultBuffer = await invokeAsWebVI('webvi_web_bluetooth.readCharacteristicNotification', [
+                            notificationBufferRefnum
+                        ]);
+                        let result = textDecoder.decode(resultBuffer);
+                        window.puckjs_result.value += result;
+                        loopExp = true;
+                    }
+                } catch (ex) {
+                    puckjsError(ex);
+                }
+            };
+
+            let textEncoder = new TextEncoder();
+            window.puckjs_send.onclick = async function () {
+                try {
+                    await invokeAsWebVI('webvi_web_bluetooth.writeValue', [
+                        txCharacteristicRefnum,
+                        textEncoder.encode(window.puckjs_command.value + '\n')
+                    ]);
+                } catch (ex) {
+                    puckjsError(ex);
+                }
+            };
+
+            window.puckjs_disconnect.onclick = async function () {
+                try {
+                    invokeAsWebVI('webvi_web_bluetooth.gattServerDisconnect', [
+                        deviceRefnum
+                    ]);
+                } catch (ex) {
+                    puckjsError(ex);
+                }
+            };
+        } catch (ex) {
+            puckjsError(ex);
+        }
+    };
+
     // Run test
     await domContentLoaded();
     window.battery_enable.onclick = batteryEnable;
     window.playbulb_enable.onclick = playbulbEnable;
+    window.puckjs_enable.onclick = puckjsEnable;
 }());
