@@ -1,10 +1,10 @@
 (function () {
     'use strict';
 
-    var validPrimitives = ['boolean', 'string', 'number', 'undefined'];
-    var validInstances = [Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array];
-    var validateReturnType = function (val) {
-        var isValid = validPrimitives.find(name => typeof val === name) !== undefined || validInstances.find(klass => val instanceof klass) !== undefined;
+    let validPrimitives = ['boolean', 'string', 'number', 'undefined'];
+    let validInstances = [Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array];
+    let validateReturnType = function (val) {
+        let isValid = validPrimitives.find(name => typeof val === name) !== undefined || validInstances.find(klass => val instanceof klass) !== undefined;
         if (isValid === false) {
             throw new Error(`Return value is not a type supported by the JSLI. Returned value: ${val}`);
         }
@@ -13,23 +13,23 @@
 
     // A simulator for invoking a JS function in a manner similar to WebVIs
     // Error handling is not as comprehensive as for WebVIs so behaviors will differ
-    var invokeAsWebVI = function (functionName, args) {
+    let invokeAsWebVI = function (functionName, args) {
         // Lookup function and context in global scope
-        var fn = functionName.split('.').reduce((obj, ns) => obj[ns], window);
-        var context = functionName.split('.').slice(0, -1).reduce((obj, ns) => obj[ns], window);
+        let fn = functionName.split('.').reduce((obj, ns) => obj[ns], window);
+        let context = functionName.split('.').slice(0, -1).reduce((obj, ns) => obj[ns], window);
 
         if (fn === undefined || context === undefined) {
             throw new Error(`Could not find function and context for function named: ${functionName}`);
         }
 
         // Used to flag that the user will complete the function asynchronously
-        var completePromise;
-        var createCallbackAndSetAsyncFlag = function () {
+        let completePromise;
+        let createCallbackAndSetAsyncFlag = function () {
             if (completePromise !== undefined) {
                 throw new Error('Completion callback already retrieved for this JSLI instance');
             }
 
-            var callback;
+            let callback;
             // Set flag that user wants to complete asynchronously
             completePromise = new Promise(function (resolve, reject) {
                 callback = function (result) {
@@ -44,8 +44,8 @@
             return callback;
         };
 
-        var createJSAPI = function () {
-            var getCompletionCallback = function () {
+        let createJSAPI = function () {
+            let getCompletionCallback = function () {
                 return createCallbackAndSetAsyncFlag();
             };
 
@@ -55,7 +55,7 @@
         };
 
         // User signals wanting access to the jsapi
-        var result;
+        let result;
         if (fn.length === args.length + 1) {
             result = fn.apply(context, [...args, createJSAPI()]);
 
@@ -71,9 +71,9 @@
     };
 
     // Wrapper to expose called function name and parameters in call stack
-    var maxArgLength = 100;
-    var createNewName = function (functionName, args) {
-        var parametersMerged = args
+    let maxArgLength = 100;
+    let createNewName = function (functionName, args) {
+        let parametersMerged = args
             .map(arg => String(arg))
             .map(arg => {
                 if (arg.length > maxArgLength) {
@@ -83,16 +83,16 @@
             })
             .join(' 💌 ');
 
-        var parametersFormatted = '';
+        let parametersFormatted = '';
         if (args.length > 0) {
             parametersFormatted = ` 📌 ${parametersMerged} 📌 `;
         }
         return `invokeAsWebVILogger 🚀 ${functionName}${parametersFormatted}- ⏰ ${performance.now()} ms`;
     };
 
-    var invokeAsWebVIWrapper = function (functionName, args) {
-        var newName = createNewName(functionName, args);
-        var invokeAsWebVILogger = function () {
+    let invokeAsWebVIWrapper = function (functionName, args) {
+        let newName = createNewName(functionName, args);
+        let invokeAsWebVILogger = function () {
             console.debug(newName);
             return invokeAsWebVI(functionName, args);
         };

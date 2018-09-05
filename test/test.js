@@ -1,8 +1,8 @@
-(function () {
+(async function () {
     'use strict';
 
     // General helper functions
-    var domContentLoaded = function () {
+    let domContentLoaded = function () {
         return new Promise(function (resolve) {
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => resolve());
@@ -13,44 +13,44 @@
     };
 
     // Aliases
-    var invokeAsWebVI = window.webvisimulator.invokeAsWebVI;
+    let invokeAsWebVI = window.webvisimulator.invokeAsWebVI;
 
     // Test code
-    var batteryError = function (ex) {
+    let batteryError = function (ex) {
         window.battery_error.value = ex.message;
         console.error(ex);
     };
 
-    var batteryEnable = async function () {
+    let batteryEnable = async function () {
         // Based on https://googlechrome.github.io/samples/web-bluetooth/notifications.html?service=battery_service&characteristic=battery_level
         try {
-            var requestDataOptionsJSON = JSON.stringify({
+            let requestDataOptionsJSON = JSON.stringify({
                 filters: [{
                     services: ['battery_service']
                 }]
             });
 
-            var deviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.requestDevice', [
+            let deviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.requestDevice', [
                 requestDataOptionsJSON,
                 '#battery_connect',
                 'click'
             ]);
 
-            var gattServerRefnum = await invokeAsWebVI('webvi_web_bluetooth.gattServerConnect', [
+            let gattServerRefnum = await invokeAsWebVI('webvi_web_bluetooth.gattServerConnect', [
                 deviceRefnum
             ]);
 
-            var serviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.getPrimaryService', [
+            let serviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.getPrimaryService', [
                 gattServerRefnum,
                 'battery_service'
             ]);
 
-            var characteristicRefnum = await invokeAsWebVI('webvi_web_bluetooth.getCharacteristic', [
+            let characteristicRefnum = await invokeAsWebVI('webvi_web_bluetooth.getCharacteristic', [
                 serviceRefnum,
                 'battery_level'
             ]);
 
-            var value = await invokeAsWebVI('webvi_web_bluetooth.readValue', [
+            let value = await invokeAsWebVI('webvi_web_bluetooth.readValue', [
                 characteristicRefnum
             ]);
 
@@ -58,11 +58,11 @@
 
             window.battery_notifications.onclick = async function () {
                 try {
-                    var notificationBufferRefnum = await invokeAsWebVI('webvi_web_bluetooth.startCharacteristicNotification', [
+                    let notificationBufferRefnum = await invokeAsWebVI('webvi_web_bluetooth.startCharacteristicNotification', [
                         characteristicRefnum
                     ]);
-                    var result;
-                    var loopExp = true;
+                    let result;
+                    let loopExp = true;
                     while (loopExp) {
                         result = await invokeAsWebVI('webvi_web_bluetooth.readCharacteristicNotification', [
                             notificationBufferRefnum
@@ -89,16 +89,16 @@
         }
     };
 
-    var getPlaybulbRGBColorArray = function () {
+    let getPlaybulbRGBColorArray = function () {
         return window.playbulb_color.value.match(/#([0-9a-f][0-9a-f])([0-9a-f][0-9a-f])([0-9a-f][0-9a-f])/).slice(1).map(hex => parseInt(hex, 16));
     };
 
-    var playbulbError = function (ex) {
+    let playbulbError = function (ex) {
         window.playbulb_error.value = ex.message;
         console.error(ex);
     };
 
-    var playbulbEnable = async function () {
+    let playbulbEnable = async function () {
         /* eslint-disable no-magic-numbers */
         // Based on https://googlecodelabs.github.io/candle-bluetooth/playbulbCandle.js
         try {
@@ -115,33 +115,33 @@
             //     0xFFFB
             // ]);
 
-            var requestDataOptionsJSON = JSON.stringify({
+            let requestDataOptionsJSON = JSON.stringify({
                 filters: [{
                     services: [CANDLE_SERVICE_UUID]
                 }]
             });
 
-            var deviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.requestDevice', [
+            let deviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.requestDevice', [
                 requestDataOptionsJSON,
                 '#playbulb_connect',
                 'click'
             ]);
 
-            var gattServerRefnum = await invokeAsWebVI('webvi_web_bluetooth.gattServerConnect', [
+            let gattServerRefnum = await invokeAsWebVI('webvi_web_bluetooth.gattServerConnect', [
                 deviceRefnum
             ]);
 
-            var serviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.getPrimaryService', [
+            let serviceRefnum = await invokeAsWebVI('webvi_web_bluetooth.getPrimaryService', [
                 gattServerRefnum,
                 CANDLE_SERVICE_UUID
             ]);
 
-            var characteristicRefnum = await invokeAsWebVI('webvi_web_bluetooth.getCharacteristic', [
+            let characteristicRefnum = await invokeAsWebVI('webvi_web_bluetooth.getCharacteristic', [
                 serviceRefnum,
                 CANDLE_COLOR_UUID
             ]);
 
-            // var value = await invokeAsWebVI('webvi_web_bluetooth.readValue', [
+            // let value = await invokeAsWebVI('webvi_web_bluetooth.readValue', [
             //     characteristicRefnum
             // ]);
 
@@ -173,8 +173,7 @@
     };
 
     // Run test
-    domContentLoaded().then(() => {
-        window.battery_enable.onclick = batteryEnable;
-        window.playbulb_enable.onclick = playbulbEnable;
-    });
+    await domContentLoaded();
+    window.battery_enable.onclick = batteryEnable;
+    window.playbulb_enable.onclick = playbulbEnable;
 }());

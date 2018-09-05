@@ -2,14 +2,14 @@
     'use strict';
 
     // zero is an invalid refnum
-    var nextRefnum = 1;
+    let nextRefnum = 1;
     class RefnumManager {
         constructor () {
             this.refnums = new Map();
         }
 
         createRefnum (obj) {
-            var refnum = nextRefnum;
+            let refnum = nextRefnum;
             nextRefnum += 1;
             this.refnums.set(refnum, obj);
             return refnum;
@@ -24,15 +24,24 @@
         }
     }
 
-    var refnumManager = new RefnumManager();
+    let refnumManager = new RefnumManager();
 
     // Used to convert from 16-bit or 32-bit UUID numbers to 128-bit UUID strings
-    var canonicalUUID = function (alias) {
+    let canonicalUUID = function (alias) {
         if (window.navigator.bluetooth === undefined) {
             throw new Error('Web Bluetooth is not supported by this browser');
         }
 
         return window.BluetoothUUID.canonicalUUID(alias);
+    };
+
+    let parseRequestDeviceOptions = function (requestDeviceOptionsJSON) {
+        try {
+            // TODO: Use a reviver or something for manufacturerData and serviceData https://github.com/WebBluetoothCG/web-bluetooth/issues/407
+            return JSON.parse(requestDeviceOptionsJSON);
+        } catch (ex) {
+            throw new Error(`Could not parse the provided requestDeviceOptionsJSON as JSON: ${requestDeviceOptionsJSON}. Parsing results in the following error:${ex}.`);
+        }
     };
 
     /**
@@ -56,68 +65,64 @@
      * @returns
      *  A refnum for the bluetooth device to use with the web bluetooth api
      */
-    var requestDevice = function (requestDeviceOptionsJSON, selector, eventName, jsapi) {
+    let requestDevice = function (requestDeviceOptionsJSON, selector, eventName, jsapi) {
         if (window.navigator.bluetooth === undefined) {
             throw new Error('Web Bluetooth is not supported by this browser');
         }
 
-        var requestDeviceOptions;
-        try {
-            // TODO: Use a reviver or something for manufacturerData and serviceData https://github.com/WebBluetoothCG/web-bluetooth/issues/407
-            requestDeviceOptions = JSON.parse(requestDeviceOptionsJSON);
-        } catch (ex) {
-            throw new Error(`Could not parse the provided requestDeviceOptionsJSON as JSON: ${requestDeviceOptionsJSON}. Parsing results in the following error:${ex}.`);
-        }
+        let requestDeviceOptions = parseRequestDeviceOptions(requestDeviceOptionsJSON);
 
-        var elements = document.querySelectorAll(selector);
+        let elements = document.querySelectorAll(selector);
         if (elements.length !== 1) {
             throw new Error(`Exactly one element must match the provided selector: ${selector}. Instead found the following number: ${elements.length}.`);
         }
-        var element = elements[0];
+        let element = elements[0];
 
-        var validEventName;
+        let validEventName;
         if (typeof eventName !== 'string' || eventName.length === 0) {
             validEventName = 'click';
         } else {
             validEventName = eventName;
         }
 
-        var completionCallback = jsapi.getCompletionCallback();
-        var handler = function () {
+        let completionCallback = jsapi.getCompletionCallback();
+        let handler = async function () {
             // Make sure the event is only triggered once
             element.removeEventListener(validEventName, handler);
 
-            // Ask user for the bluetooth device
-            window.navigator.bluetooth.requestDevice(requestDeviceOptions)
-                .then(device => {
-                    var deviceRefnum = refnumManager.createRefnum(device);
-                    // TODO instead return JSON with device refnum, device name, and device id: https://webbluetoothcg.github.io/web-bluetooth/#bluetoothdevice
-                    completionCallback(deviceRefnum);
-                })
-                .catch(ex => completionCallback(ex));
+            try {
+                // Ask user for the bluetooth device
+                let device = await window.navigator.bluetooth.requestDevice(requestDeviceOptions);
+                let deviceRefnum = refnumManager.createRefnum(device);
+                // TODO instead return JSON with device refnum, device name, and device id: https://webbluetoothcg.github.io/web-bluetooth/#bluetoothdevice
+                completionCallback(deviceRefnum);
+            } catch (ex) {
+                completionCallback(ex);
+            }
         };
 
         element.addEventListener(validEventName, handler);
     };
 
     // TODO maybe should have gattServer and gattServerConnect / gattServerDisconnect? Seems strange to ask device to disconnect gatt server instead of server itself
-    var gattServerConnect = function (deviceRefnum, jsapi) {
-        var device = refnumManager.getObject(deviceRefnum);
+    let gattServerConnect = async function (deviceRefnum, jsapi) {
+        let device = refnumManager.getObject(deviceRefnum);
         if (device instanceof window.BluetoothDevice === false) {
             throw new Error(`Expected gattServerConnect to be invoked with a deviceRefnum, instead got: ${device}`);
         }
 
-        var completionCallback = jsapi.getCompletionCallback();
-        device.gatt.connect()
-            .then(function (gattServer) {
-                var gattServerRefnum = refnumManager.createRefnum(gattServer);
-                completionCallback(gattServerRefnum);
-            })
-            .catch(ex => completionCallback(ex));
+        let completionCallback = jsapi.getCompletionCallback();
+        try {
+            let gattServer = await device.gatt.connect();
+            let gattServerRefnum = refnumManager.createRefnum(gattServer);
+            completionCallback(gattServerRefnum);
+        } catch (ex) {
+            completionCallback(ex);
+        }
     };
 
-    var gattServerDisconnect = function (deviceRefnum) {
-        var device = refnumManager.getObject(deviceRefnum);
+    let gattServerDisconnect = function (deviceRefnum) {
+        let device = refnumManager.getObject(deviceRefnum);
         if (device instanceof window.BluetoothDevice === false) {
             throw new Error(`Expected gattServerDisconnect to be invoked with a deviceRefnum, instead got: ${device}`);
         }
@@ -128,61 +133,67 @@
     };
 
     // For information about primary vs included services: https://webbluetoothcg.github.io/web-bluetooth/#information-model
-    var getPrimaryService = function (gattServerRefnum, serviceName, jsapi) {
-        var gattServer = refnumManager.getObject(gattServerRefnum);
+    let getPrimaryService = async function (gattServerRefnum, serviceName, jsapi) {
+        let gattServer = refnumManager.getObject(gattServerRefnum);
         if (gattServer instanceof window.BluetoothRemoteGATTServer === false) {
             throw new Error(`Expected getPrimaryService to be invoked with a gattServerRefnum, instead got: ${gattServer}`);
         }
 
-        var completionCallback = jsapi.getCompletionCallback();
-        gattServer.getPrimaryService(serviceName)
-            .then(function (service) {
-                var serviceRefnum = refnumManager.createRefnum(service);
-                completionCallback(serviceRefnum);
-            })
-            .catch(ex => completionCallback(ex));
+        let completionCallback = jsapi.getCompletionCallback();
+        try {
+            let service = await gattServer.getPrimaryService(serviceName);
+            let serviceRefnum = refnumManager.createRefnum(service);
+            completionCallback(serviceRefnum);
+        } catch (ex) {
+            completionCallback(ex);
+        }
     };
 
-    var getCharacteristic = function (serviceRefnum, characteristicName, jsapi) {
-        var service = refnumManager.getObject(serviceRefnum);
+    let getCharacteristic = async function (serviceRefnum, characteristicName, jsapi) {
+        let service = refnumManager.getObject(serviceRefnum);
         if (service instanceof window.BluetoothRemoteGATTService === false) {
             throw new Error(`Expected getCharacteristic to be invoked with a serviceRefnum, instead got: ${service}`);
         }
 
-        var completionCallback = jsapi.getCompletionCallback();
-        service.getCharacteristic(characteristicName)
-            .then(function (characteristic) {
-                var characteristicRefnum = refnumManager.createRefnum(characteristic);
-                completionCallback(characteristicRefnum);
-            })
-            .catch(ex => completionCallback(ex));
+        let completionCallback = jsapi.getCompletionCallback();
+        try {
+            let characteristic = await service.getCharacteristic(characteristicName);
+            let characteristicRefnum = refnumManager.createRefnum(characteristic);
+            completionCallback(characteristicRefnum);
+        } catch (ex) {
+            completionCallback(ex);
+        }
     };
 
-    var readValue = function (characteristicRefnum, jsapi) {
-        var characteristic = refnumManager.getObject(characteristicRefnum);
+    let readValue = async function (characteristicRefnum, jsapi) {
+        let characteristic = refnumManager.getObject(characteristicRefnum);
         if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
             throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
         }
 
-        var completionCallback = jsapi.getCompletionCallback();
-        characteristic.readValue()
-            .then(function (valueDataView) {
-                // DataView documentation https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
-                completionCallback(new Uint8Array(valueDataView.buffer));
-            })
-            .catch(ex => completionCallback(ex));
+        let completionCallback = jsapi.getCompletionCallback();
+        try {
+            let valueDataView = await characteristic.readValue();
+            // DataView documentation https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
+            completionCallback(new Uint8Array(valueDataView.buffer));
+        } catch (ex) {
+            completionCallback(ex);
+        }
     };
 
-    var writeValue = function (characteristicRefnum, value, jsapi) {
-        var characteristic = refnumManager.getObject(characteristicRefnum);
+    let writeValue = async function (characteristicRefnum, value, jsapi) {
+        let characteristic = refnumManager.getObject(characteristicRefnum);
         if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
             throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
         }
 
-        var completionCallback = jsapi.getCompletionCallback();
-        characteristic.writeValue(value)
-            .then(() => completionCallback())
-            .catch((ex) => completionCallback(ex));
+        let completionCallback = jsapi.getCompletionCallback();
+        try {
+            await characteristic.writeValue(value);
+            completionCallback();
+        } catch (ex) {
+            completionCallback(ex);
+        }
     };
 
     class NotificationBuffer {
@@ -230,8 +241,8 @@
         }
     }
 
-    var startCharacteristicNotification = function (characteristicRefnum, jsapi) {
-        var characteristic = refnumManager.getObject(characteristicRefnum);
+    let startCharacteristicNotification = async function (characteristicRefnum, jsapi) {
+        let characteristic = refnumManager.getObject(characteristicRefnum);
         if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
             throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
         }
@@ -239,39 +250,42 @@
         // According to spec:
         // After notifications are enabled, the resulting value-change events won’t be delivered until after the current microtask checkpoint.
         // This allows a developer to set up handlers in the .then handler of the result promise.
-        var completionCallback = jsapi.getCompletionCallback();
-        characteristic.startNotifications()
-            .then(() => {
-                var notificationBuffer = new NotificationBuffer(characteristic);
-                var notificationBufferRefnum = refnumManager.createRefnum(notificationBuffer);
-                completionCallback(notificationBufferRefnum);
-            })
-            .catch((ex) => completionCallback(ex));
+        let completionCallback = jsapi.getCompletionCallback();
+        try {
+            await characteristic.startNotifications();
+            let notificationBuffer = new NotificationBuffer(characteristic);
+            let notificationBufferRefnum = refnumManager.createRefnum(notificationBuffer);
+            completionCallback(notificationBufferRefnum);
+        } catch (ex) {
+            completionCallback(ex);
+        }
     };
 
-    var readCharacteristicNotification = function (notificationBufferRefnum, jsapi) {
-        var notificationBuffer = refnumManager.getObject(notificationBufferRefnum);
+    let readCharacteristicNotification = function (notificationBufferRefnum, jsapi) {
+        let notificationBuffer = refnumManager.getObject(notificationBufferRefnum);
         if (notificationBuffer instanceof NotificationBuffer === false) {
             throw new Error(`Expected readCharacteristicNotification to be invoked with a notificationBufferRefnum, instead got: ${notificationBuffer}`);
         }
 
-        var completionCallback = jsapi.getCompletionCallback();
+        let completionCallback = jsapi.getCompletionCallback();
         notificationBuffer.read(completionCallback);
     };
 
-    var stopCharacteristicNotification = function (notificationBufferRefnum, jsapi) {
-        var notificationBuffer = refnumManager.getObject(notificationBufferRefnum);
+    let stopCharacteristicNotification = async function (notificationBufferRefnum, jsapi) {
+        let notificationBuffer = refnumManager.getObject(notificationBufferRefnum);
         if (notificationBuffer instanceof NotificationBuffer === false) {
             throw new Error(`Expected readCharacteristicNotification to be invoked with a notificationBufferRefnum, instead got: ${notificationBuffer}`);
         }
 
-        var completionCallback = jsapi.getCompletionCallback();
-        notificationBuffer.characteristic.stopNotifications()
-            .then(() => completionCallback())
-            .catch((ex) => completionCallback(ex))
-            .finally(() => {
-                notificationBuffer.stop();
-            });
+        let completionCallback = jsapi.getCompletionCallback();
+        try {
+            await notificationBuffer.characteristic.stopNotifications();
+            completionCallback();
+        } catch (ex) {
+            completionCallback(ex);
+        } finally {
+            notificationBuffer.stop();
+        }
     };
 
     window.webvi_web_bluetooth = {
