@@ -18,3 +18,8 @@
 # JavaScript
 node_modules
 *.tgz
+
+# LabVIEW NXG
+*cache
+Builds/
+*.lvcompile

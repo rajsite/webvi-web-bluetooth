@@ -2,13 +2,13 @@
   "name": "webvi-web-bluetooth",
   "version": "1.0.0",
   "description": "An experimental WebVI JSLI wrapper for the Web Bluetooth API",
-  "main": "source/main.js",
+  "main": "source/WebApp.gcomp/WebBluetooth/WebBluetooth.js",
   "scripts": {
     "test": "npm run lint && npm run spell && npm run links",
     "lint": "eslint ./source/**/*.js",
     "spell": "mdspell --en-us --ignore-numbers \"./*.md\" --report",
     "links": "glob-exec --foreach \"./*.md\" -- \"markdown-link-check -c .linkcheck.json {{file}}\"",
-    "serve": "http-server . -p 8040 -o http://localhost:8040/test"
+    "test-serve": "http-server . -p 8040 -o http://localhost:8040/test"
   },
   "repository": {
     "type": "git",
