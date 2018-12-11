@@ -239,21 +239,36 @@
         constructor (characteristic) {
             this.characteristic = characteristic;
             this.queue = new DataQueue();
+
             this.handler = (evt) => {
                 this.queue.enqueue(new Uint8Array(evt.target.value.buffer));
             };
+            this.stopHandler = () => {
+                this.stop();
+            };
+
             this.characteristic.addEventListener('characteristicvaluechanged', this.handler);
+            this.characteristic.service.device.addEventListener('gattserverdisconnected', this.stopHandler);
         }
 
         read () {
             return this.queue.dequeue();
         }
 
-        stop () {
+        async stop () {
             this.characteristic.removeEventListener('characteristicvaluechanged', this.handler);
-            this.characteristic.stopNotifications();
-            this.characteristic = undefined;
+            this.characteristic.service.device.removeEventListener('gattserverdisconnected', this.stopHandler);
+
             this.handler = undefined;
+            this.stopHandler = undefined;
+
+            // TODO need to move start and stop notifications out of per chracteristic read
+            try {
+                await this.characteristic.stopNotifications();
+            } catch (ex) {
+                console.error(ex);
+            }
+            this.characteristic = undefined;
 
             // TODO mraj should we do anything with queue data if there are leftovers when stopping?
             this.queue.destroy();
@@ -271,6 +286,8 @@
             // According to spec:
             // After notifications are enabled, the resulting value-change events won’t be delivered until after the current microtask checkpoint.
             // This allows a developer to set up handlers in the .then handler of the result promise.
+
+            // TODO need to move start and stop notifications out of per chracteristic read
             await characteristic.startNotifications();
             const characteristicMonitor = new CharacteristicMonitor(characteristic);
             const characteristicMonitorRefnum = refnumManager.createRefnum(characteristicMonitor);
@@ -296,7 +313,7 @@
             if (characteristicMonitor instanceof CharacteristicMonitor === false) {
                 throw new Error(`Expected readCharacteristicNotification to be invoked with a characteristicMonitorRefnum, instead got: ${characteristicMonitor}`);
             }
-            await characteristicMonitor.characteristic.stopNotifications();
+            await characteristicMonitor.stop();
         });
     };
 
