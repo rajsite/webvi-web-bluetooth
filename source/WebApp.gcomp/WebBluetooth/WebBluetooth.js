@@ -1,7 +1,8 @@
 (function () {
     'use strict';
 
-    const makeAsync = function (completionCallback, asyncFn) {
+    const makeAsync = function (jsapi, asyncFn) {
+        const completionCallback = jsapi.getCompletionCallback();
         asyncFn().then(completionCallback).catch(completionCallback);
     };
 
@@ -22,7 +23,7 @@
         }
 
         createRefnum (obj) {
-            let refnum = nextRefnum;
+            const refnum = nextRefnum;
             nextRefnum += 1;
             this.refnums.set(refnum, obj);
             return refnum;
@@ -37,10 +38,10 @@
         }
     }
 
-    let refnumManager = new RefnumManager();
+    const refnumManager = new RefnumManager();
 
     // Used to convert from 16-bit or 32-bit UUID numbers to 128-bit UUID strings
-    let canonicalUUID = function (alias) {
+    const canonicalUUID = function (alias) {
         if (window.navigator.bluetooth === undefined) {
             throw new Error('Web Bluetooth is not supported by this browser');
         }
@@ -48,7 +49,7 @@
         return window.BluetoothUUID.canonicalUUID(alias);
     };
 
-    let parseRequestDeviceOptions = function (requestDeviceOptionsJSON) {
+    const parseRequestDeviceOptions = function (requestDeviceOptionsJSON) {
         try {
             // TODO: Use a reviver or something for manufacturerData and serviceData https://github.com/WebBluetoothCG/web-bluetooth/issues/407
             return JSON.parse(requestDeviceOptionsJSON);
@@ -78,51 +79,48 @@
      * @returns
      *  A refnum for the bluetooth device to use with the web bluetooth api
      */
-    let requestDevice = function (requestDeviceOptionsJSON, selector, eventName, jsapi) {
-        makeAsync(jsapi.getCompletionCallback(), async function () {
+    const requestDevice = function (requestDeviceOptionsJSON, selector, eventName, jsapi) {
+        makeAsync(jsapi, async function () {
             if (window.navigator.bluetooth === undefined) {
                 throw new Error('Web Bluetooth is not supported by this browser');
             }
 
-            let requestDeviceOptions = parseRequestDeviceOptions(requestDeviceOptionsJSON);
+            const requestDeviceOptions = parseRequestDeviceOptions(requestDeviceOptionsJSON);
 
-            let elements = document.querySelectorAll(selector);
+            const elements = document.querySelectorAll(selector);
             if (elements.length !== 1) {
                 throw new Error(`Exactly one element must match the provided selector: ${selector}. Instead found the following number: ${elements.length}.`);
             }
-            let element = elements[0];
+            const element = elements[0];
 
-            let validEventName;
-            if (typeof eventName !== 'string' || eventName.length === 0) {
-                validEventName = 'click';
-            } else {
-                validEventName = eventName;
-            }
+            const validEventName = (typeof eventName !== 'string' || eventName.length === 0) ?
+                'click' :
+                eventName;
 
             await eventOccurence(element, validEventName);
 
-            let device = await window.navigator.bluetooth.requestDevice(requestDeviceOptions);
-            let deviceRefnum = refnumManager.createRefnum(device);
+            const device = await window.navigator.bluetooth.requestDevice(requestDeviceOptions);
+            const deviceRefnum = refnumManager.createRefnum(device);
             // TODO instead return JSON with device refnum, device name, and device id: https://webbluetoothcg.github.io/web-bluetooth/#bluetoothdevice
             return deviceRefnum;
         });
     };
 
     // TODO maybe should have gattServer and gattServerConnect / gattServerDisconnect? Seems strange to ask device to disconnect gatt server instead of server itself
-    let gattServerConnect = function (deviceRefnum, jsapi) {
-        makeAsync(jsapi.getCompletionCallback(), async function () {
-            let device = refnumManager.getObject(deviceRefnum);
+    const gattServerConnect = function (deviceRefnum, jsapi) {
+        makeAsync(jsapi, async function () {
+            const device = refnumManager.getObject(deviceRefnum);
             if (device instanceof window.BluetoothDevice === false) {
                 throw new Error(`Expected gattServerConnect to be invoked with a deviceRefnum, instead got: ${device}`);
             }
-            let gattServer = await device.gatt.connect();
-            let gattServerRefnum = refnumManager.createRefnum(gattServer);
+            const gattServer = await device.gatt.connect();
+            const gattServerRefnum = refnumManager.createRefnum(gattServer);
             return gattServerRefnum;
         });
     };
 
-    let gattServerDisconnect = function (deviceRefnum) {
-        let device = refnumManager.getObject(deviceRefnum);
+    const gattServerDisconnect = function (deviceRefnum) {
+        const device = refnumManager.getObject(deviceRefnum);
         if (device instanceof window.BluetoothDevice === false) {
             throw new Error(`Expected gattServerDisconnect to be invoked with a deviceRefnum, instead got: ${device}`);
         }
@@ -133,48 +131,48 @@
     };
 
     // For information about primary vs included services: https://webbluetoothcg.github.io/web-bluetooth/#information-model
-    let getPrimaryService = function (gattServerRefnum, serviceName, jsapi) {
-        makeAsync(jsapi.getCompletionCallback(), async function () {
-            let gattServer = refnumManager.getObject(gattServerRefnum);
+    const getPrimaryService = function (gattServerRefnum, serviceName, jsapi) {
+        makeAsync(jsapi, async function () {
+            const gattServer = refnumManager.getObject(gattServerRefnum);
             if (gattServer instanceof window.BluetoothRemoteGATTServer === false) {
                 throw new Error(`Expected getPrimaryService to be invoked with a gattServerRefnum, instead got: ${gattServer}`);
             }
 
-            let service = await gattServer.getPrimaryService(serviceName);
-            let serviceRefnum = refnumManager.createRefnum(service);
+            const service = await gattServer.getPrimaryService(serviceName);
+            const serviceRefnum = refnumManager.createRefnum(service);
             return serviceRefnum;
         });
     };
 
-    let getCharacteristic = function (serviceRefnum, characteristicName, jsapi) {
-        makeAsync(jsapi.getCompletionCallback(), async function () {
-            let service = refnumManager.getObject(serviceRefnum);
+    const getCharacteristic = function (serviceRefnum, characteristicName, jsapi) {
+        makeAsync(jsapi, async function () {
+            const service = refnumManager.getObject(serviceRefnum);
             if (service instanceof window.BluetoothRemoteGATTService === false) {
                 throw new Error(`Expected getCharacteristic to be invoked with a serviceRefnum, instead got: ${service}`);
             }
 
-            let characteristic = await service.getCharacteristic(characteristicName);
-            let characteristicRefnum = refnumManager.createRefnum(characteristic);
+            const characteristic = await service.getCharacteristic(characteristicName);
+            const characteristicRefnum = refnumManager.createRefnum(characteristic);
             return characteristicRefnum;
         });
     };
 
-    let readValue = function (characteristicRefnum, jsapi) {
-        makeAsync(jsapi.getCompletionCallback(), async function () {
-            let characteristic = refnumManager.getObject(characteristicRefnum);
+    const readValue = function (characteristicRefnum, jsapi) {
+        makeAsync(jsapi, async function () {
+            const characteristic = refnumManager.getObject(characteristicRefnum);
             if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
                 throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
             }
 
-            let valueDataView = await characteristic.readValue();
+            const valueDataView = await characteristic.readValue();
             // DataView documentation https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
             return new Uint8Array(valueDataView.buffer);
         });
     };
 
-    let writeValue = function (characteristicRefnum, value, jsapi) {
-        makeAsync(jsapi.getCompletionCallback(), async function () {
-            let characteristic = refnumManager.getObject(characteristicRefnum);
+    const writeValue = function (characteristicRefnum, value, jsapi) {
+        makeAsync(jsapi, async function () {
+            const characteristic = refnumManager.getObject(characteristicRefnum);
             if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
                 throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
             }
@@ -183,36 +181,72 @@
         });
     };
 
-    class NotificationBuffer {
+    class DataQueue {
+        constructor () {
+            this.queue = [];
+            this.pendingResolve = undefined;
+            this.pendingReject = undefined;
+        }
+
+        enqueue (data) {
+            if (this.queue === undefined) {
+                throw new Error(`The queue has already been destroyed, cannot enqueue new data: ${data}`);
+            }
+
+            this.queue.push(data);
+
+            if (this.pendingResolve !== undefined) {
+                this.pendingResolve(this.queue.shift());
+                this.pendingResolve = undefined;
+                this.pendingReject = undefined;
+            }
+        }
+
+        dequeue () {
+            if (this.queue === undefined) {
+                throw new Error('The queue has already been destroyed, cannot dequeue any data.');
+            }
+
+            if (this.pendingResolve !== undefined) {
+                throw new Error('A pending dequeue operation already exists. Only one pending dequeue operation allowed at a time.');
+            }
+
+            if (this.queue.length === 0) {
+                return new Promise((resolve, reject) => {
+                    this.pendingResolve = resolve;
+                    this.pendingReject = reject;
+                });
+            }
+
+            return this.queue.shift();
+        }
+
+        destroy () {
+            if (this.pendingResolve !== undefined) {
+                this.pendingReject(new Error('Pending dequeue operation failed due to queue destruction.'));
+                this.pendingResolve = undefined;
+                this.pendingReject = undefined;
+            }
+            this.pendingResolve = undefined;
+
+            const remaining = this.queue;
+            this.queue = undefined;
+            return remaining;
+        }
+    }
+
+    class CharacteristicMonitor {
         constructor (characteristic) {
-            this.buffer = [];
             this.characteristic = characteristic;
-            this.pendingReadCompletionCallback = undefined;
-
+            this.queue = new DataQueue();
             this.handler = (evt) => {
-                this.buffer.push(new Uint8Array(evt.target.value.buffer));
-
-                if (this.pendingReadCompletionCallback !== undefined) {
-                    this.pendingReadCompletionCallback(this.buffer.shift());
-                    this.pendingReadCompletionCallback = undefined;
-                }
+                this.queue.enqueue(new Uint8Array(evt.target.value.buffer));
             };
-
             this.characteristic.addEventListener('characteristicvaluechanged', this.handler);
         }
 
-        read (completionCallback) {
-            if (this.pendingReadCompletionCallback !== undefined) {
-                completionCallback(new Error('An active characteristic notification read is already being perfomed for this characteristic.'));
-                return;
-            }
-
-            if (this.buffer.length === 0) {
-                this.pendingReadCompletionCallback = completionCallback;
-                return;
-            }
-
-            completionCallback(this.buffer.shift());
+        read () {
+            return this.queue.dequeue();
         }
 
         stop () {
@@ -220,18 +254,16 @@
             this.characteristic.stopNotifications();
             this.characteristic = undefined;
             this.handler = undefined;
-            if (this.pendingReadCompletionCallback !== undefined) {
-                this.pendingReadCompletionCallback(new Error('Characteristic notifications stopped'));
-            }
-            this.pendingReadCompletionCallback = undefined;
-            // TODO mraj should we do anything with buffer data if there are leftovers when stopping?
-            this.buffer = undefined;
+
+            // TODO mraj should we do anything with queue data if there are leftovers when stopping?
+            this.queue.destroy();
+            this.queue = undefined;
         }
     }
 
-    let startCharacteristicNotification = function (characteristicRefnum, jsapi) {
-        makeAsync(jsapi.getCompletionCallback(), async function () {
-            let characteristic = refnumManager.getObject(characteristicRefnum);
+    const startCharacteristicNotification = function (characteristicRefnum, jsapi) {
+        makeAsync(jsapi, async function () {
+            const characteristic = refnumManager.getObject(characteristicRefnum);
             if (characteristic instanceof window.BluetoothRemoteGATTCharacteristic === false) {
                 throw new Error(`Expected readValue to be invoked with a characteristicRefnum, instead got: ${characteristic}`);
             }
@@ -240,29 +272,31 @@
             // After notifications are enabled, the resulting value-change events won’t be delivered until after the current microtask checkpoint.
             // This allows a developer to set up handlers in the .then handler of the result promise.
             await characteristic.startNotifications();
-            let notificationBuffer = new NotificationBuffer(characteristic);
-            let notificationBufferRefnum = refnumManager.createRefnum(notificationBuffer);
-            return notificationBufferRefnum;
+            const characteristicMonitor = new CharacteristicMonitor(characteristic);
+            const characteristicMonitorRefnum = refnumManager.createRefnum(characteristicMonitor);
+            return characteristicMonitorRefnum;
         });
     };
 
-    let readCharacteristicNotification = function (notificationBufferRefnum, jsapi) {
-        let notificationBuffer = refnumManager.getObject(notificationBufferRefnum);
-        if (notificationBuffer instanceof NotificationBuffer === false) {
-            throw new Error(`Expected readCharacteristicNotification to be invoked with a notificationBufferRefnum, instead got: ${notificationBuffer}`);
-        }
+    const readCharacteristicNotification = function (characteristicMonitorRefnum, jsapi) {
+        makeAsync(jsapi, async function () {
+            const characteristicMonitor = refnumManager.getObject(characteristicMonitorRefnum);
+            if (characteristicMonitor instanceof CharacteristicMonitor === false) {
+                throw new Error(`Expected readCharacteristicNotification to be invoked with a characteristicMonitorRefnum, instead got: ${characteristicMonitor}`);
+            }
 
-        let completionCallback = jsapi.getCompletionCallback();
-        notificationBuffer.read(completionCallback);
+            const data = await characteristicMonitor.read();
+            return data;
+        });
     };
 
-    let stopCharacteristicNotification = function (notificationBufferRefnum, jsapi) {
-        makeAsync(jsapi.getCompletionCallback(), async function () {
-            let notificationBuffer = refnumManager.getObject(notificationBufferRefnum);
-            if (notificationBuffer instanceof NotificationBuffer === false) {
-                throw new Error(`Expected readCharacteristicNotification to be invoked with a notificationBufferRefnum, instead got: ${notificationBuffer}`);
+    const stopCharacteristicNotification = function (characteristicMonitorRefnum, jsapi) {
+        makeAsync(jsapi, async function () {
+            const characteristicMonitor = refnumManager.getObject(characteristicMonitorRefnum);
+            if (characteristicMonitor instanceof CharacteristicMonitor === false) {
+                throw new Error(`Expected readCharacteristicNotification to be invoked with a characteristicMonitorRefnum, instead got: ${characteristicMonitor}`);
             }
-            await notificationBuffer.characteristic.stopNotifications();
+            await characteristicMonitor.characteristic.stopNotifications();
         });
     };
 
