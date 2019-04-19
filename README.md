@@ -1,5 +1,3 @@
 # webvi-web-bluetooth
 
-Work in progress. DO NOT USE.
-
-[Current test](test/)
+This repo is archived. Project moved to https://github.com/rajsite/webvi-experiments
